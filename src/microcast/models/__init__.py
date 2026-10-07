@@ -20,6 +20,9 @@ the design's zoo:
 * ``gbm_nwp`` / ``gbm_nwp_terrain``: HRRR, time and lead only, without and
   with terrain; no obs from the point itself. The forecast for a place
   with no station (the ride, the house today), scored on held-out stations.
+* ``gbm_nwp_neighbours`` / ``gbm_terrain_neighbours``: those with the nearest
+  other stations' errors at init and rolling bias (``nb*`` columns,
+  ``transform.neighbours``) added: without and with the point's own obs.
 """
 
 from __future__ import annotations
@@ -195,6 +198,26 @@ class GBMNWPTerrain(GBMResidual):
         return [*nwp_columns(), *_static_cols(df)]
 
 
+class GBMNWPNeighbours(GBMResidual):
+    name = "gbm_nwp_neighbours"
+    needs = ("static", "neighbours")
+
+    def columns(self, df: pd.DataFrame) -> list[str]:
+        from microcast.transform import neighbours
+
+        return [*nwp_columns(), *_static_cols(df), *neighbours.columns(df)]
+
+
+class GBMTerrainNeighbours(GBMResidual):
+    name = "gbm_terrain_neighbours"
+    needs = ("static", "neighbours")
+
+    def columns(self, df: pd.DataFrame) -> list[str]:
+        from microcast.transform import neighbours
+
+        return [*feature_columns()[:-1], *_static_cols(df), *neighbours.columns(df)]
+
+
 MODELS = {
     "raw_hrrr": RawNWP,
     "bias_rolling": BiasRolling,
@@ -203,6 +226,8 @@ MODELS = {
     "gbm_terrain": GBMTerrain,
     "gbm_nwp": GBMNWP,
     "gbm_nwp_terrain": GBMNWPTerrain,
+    "gbm_nwp_neighbours": GBMNWPNeighbours,
+    "gbm_terrain_neighbours": GBMTerrainNeighbours,
 }
 
 

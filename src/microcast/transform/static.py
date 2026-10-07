@@ -175,6 +175,23 @@ def wide(long: pa.Table) -> pd.DataFrame:
     return long.to_pandas().pivot(index="point_id", columns="feature", values="value").reset_index()
 
 
+def points() -> pd.DataFrame:
+    """Every registry point and station in bronze.stations: point_id, lat, lon (registry wins)."""
+    from microcast import registry
+    from microcast.lake.catalog import get_catalog
+
+    vps = registry.load().virtual_points()
+    st = get_catalog().load_table("bronze.stations").scan().to_pandas()
+    st = st.sort_values("ingested_at").groupby("station_id", as_index=False).last()
+    out = pd.concat(
+        [
+            pd.DataFrame([(v.point_id, v.lat, v.lon) for v in vps], columns=["point_id", "lat", "lon"]),
+            st.rename(columns={"station_id": "point_id"})[["point_id", "lat", "lon"]],
+        ]
+    )
+    return out.drop_duplicates("point_id").reset_index(drop=True)
+
+
 def rebuild(points: pd.DataFrame) -> pd.DataFrame:
     """Recompute silver.static_features in full; returns the wide table."""
     from microcast.ingest import dem

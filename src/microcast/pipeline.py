@@ -75,6 +75,12 @@ def load_gold(model_names: list[str], log: Callable[[str], None] = print) -> tup
             raise ValueError(f"no static features for {missing}: run `microcast build static`")
         gold = gold.merge(feats, on="point_id", how="left")
         log(f"silver.static_features @ {snapshots['static']}: {feats.shape[1] - 1} features, {len(feats)} points")
+    if "neighbours" in needs:
+        from microcast.transform import neighbours, static
+
+        feats = neighbours.features(gold, static.points())
+        gold = gold.merge(feats, on=["point_id", "init_time", "lead_min"], how="left")
+        log(f"neighbours: {feats.shape[1] - 3} features from the {neighbours.N_IDW} nearest stations")
     return gold, snapshots
 
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import gzip
 import io
+import time
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 
@@ -101,8 +102,14 @@ def to_arrow(df: pd.DataFrame, ingest_batch: str, ingested_at: datetime | None =
 # --- fetchers -----------------------------------------------------------------
 
 
-def _get_text(url: str, params: dict | list | None = None) -> str | None:
-    r = requests.get(url, params=params, timeout=120)
+def _get_text(url: str, params: dict | list | None = None, retries: int = 5) -> str | None:
+    for attempt in range(retries + 1):
+        r = requests.get(url, params=params, timeout=120)
+        if r.status_code != 429 or attempt == retries:
+            break
+        # IEM rate-limits back-to-back requests: wait as told, else back off.
+        after = r.headers.get("Retry-After", "")
+        time.sleep(float(after) if after.isdigit() else 10 * 2**attempt)
     if r.status_code == 404:
         return None
     r.raise_for_status()

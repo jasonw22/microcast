@@ -72,3 +72,21 @@ def test_months_cover_range():
         (date(2025, 12, 1), date(2026, 1, 1)),
         (date(2026, 1, 1), date(2026, 2, 1)),
     ]
+
+
+def test_get_text_waits_out_rate_limits(monkeypatch):
+    calls, sleeps = [], []
+
+    class R:
+        def __init__(self, code, headers=None):
+            self.status_code, self.headers, self.text, self.content = code, headers or {}, "ok", b"ok"
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise RuntimeError(self.status_code)
+
+    replies = [R(429, {"Retry-After": "3"}), R(429), R(200)]
+    monkeypatch.setattr(obs.requests, "get", lambda *a, **k: calls.append(1) or replies.pop(0))
+    monkeypatch.setattr(obs.time, "sleep", sleeps.append)
+    assert obs._get_text("https://example.test/x") == "ok"
+    assert sleeps == [3.0, 20]
