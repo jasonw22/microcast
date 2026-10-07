@@ -64,6 +64,15 @@ rolling monthly folds).
 - [x] **PurpleAir:** real sensor index in `.env`; channel B cleaned and
   agreeing with A again (D5); API key added, points plan in D10.
 
+## Handoff (2026-10-07)
+
+Nothing is running. Lake current to 2026-10-07: HRRR to the 15Z run
+(registry and `net1` network points), Synoptic to ~18:35Z, IEM/NDBC to
+~19Z, MADIS to 10-05 ~17Z (the archive lags; rerun `backfill madis`).
+Silver rebuilt for Sep–Oct, gold rebuilt (snapshot `7225361806880371065`,
+3,323,820 rows). Neighbour features and the leave-stations-out result are
+below; the previous holdout reports are in `data/reports/holdout-2026-10-06/`.
+
 ## Handoff (2026-10-06, end of session)
 
 Nothing is running. Every load finished and the lake is current to
@@ -104,18 +113,22 @@ Evening session (2026-10-06):
 
 1. Synoptic: `microcast ingest synoptic` at least weekly (the free tier keeps
    7 days; the trial ends ~2026-10-19, then check what the account becomes).
-2. Neighbour obs as features: for a point with no station of its own, the
-   nearest stations' last obs and HRRR error at init (as-of, like the
-   station's own). Leave-stations-out showed a point's own obs carry most of
-   the skill and terrain alone recovers little of it; this is what the house
-   (until the backyard station) and the ride need. Score it with
-   `backtest --holdout` against `gbm_nwp_terrain`.
+   GGBC1 is on Synoptic live (MADIS is ~2 days behind), so live bridge
+   forecasts need it in the Synoptic pull; not yet in the registry.
+2. Neighbour obs, follow-ups (first pass done 2026-10-07, see below):
+   neighbour features for temperature only (they cost gust 2 points), and a
+   no-own-obs sigma that matches its 70–74% coverage. Bridge gust must keep
+   GGBC1's own obs: held out, every model is 40%+ worse than raw HRRR there.
 3. Bridge crosswind gust in gold: a `xgust` target at GGBC1 (gust ×
    |sin(direction − 354.7°)|, from the corrected vane), HRRR's crosswind
    gust and along-bridge wind as features, and a "crosswind gust > 9 m/s"
    probability. Then a `gg_bridge` route whose points use GGBC1's forecast.
 4. Live inference, first cut: the newest HRRR run (live GRIB) through
    `gbm_terrain` for the house, the Castro stations, the ride and the bridge.
+   Tried by hand on 2026-10-07 (scratch script, not kept): live HRRR at
+   GGBC1, FTPC1, 604PG and F4637 through `nwp.fetch_cycle`, fresh Synoptic
+   obs, `silver.build_*` and `gold.build_training` in memory, `gbm_terrain`
+   fit on all of gold (~1 min per target). It works; make it a command.
    HRRR's raw wind is far too high inside Golden Gate Park (604PG sees ~22%
    of it on afternoons), so the ride needs a corrected wind, not raw HRRR.
 5. Data quality, the general version: a per-station check against
@@ -135,6 +148,41 @@ Evening session (2026-10-06):
 
 Docker Compose (skipped, D12), MinIO/Lakekeeper, RRFS/REFS ingest, alerts.
 Dagster moves into phase 1 as the scheduler (D12).
+
+## Neighbour obs (2026-10-07)
+
+`transform/neighbours.py` adds, for each point, the 3 nearest other truth
+stations' HRRR error at init and 14-day bias (same cycle and lead, so as-of),
+their distances, and inverse-distance means over the 5 nearest that report
+(`nbw_*`, ~99% filled). Never the point's own station; the closest pair is
+604PG and D5422, 230 m apart. Joined in `pipeline.load_gold` (need
+`"neighbours"`). Models: `gbm_nwp_neighbours` (no own obs) and
+`gbm_terrain_neighbours` (with). A neighbour's error at init correlates ~0.4
+with the station's own.
+
+Leave-stations-out (`backtest --holdout`, gold snapshot
+`7225361806880371065`, same 6 groups), skill vs raw HRRR, all held-out
+stations pooled [95% CI]:
+
+| Model | Temp 1–3 h | Temp 4–6 h | Gust 1–3 h | Gust 4–6 h |
+| --- | --- | --- | --- | --- |
+| `gbm_nwp_terrain` | +8.2% [+6.9, +9.4] | +6.1% | **+22.3%** [+21.0, +23.6] | **+24.1%** |
+| `gbm_nwp_neighbours` | **+11.7%** [+10.3, +13.0] | **+7.8%** | +20.5% [+19.1, +22.0] | +22.3% |
+| `gbm_terrain` (own obs) | +41.3% | +25.6% | +51.2% | +46.4% |
+| `gbm_terrain_neighbours` | +41.2% | +25.8% | +51.4% | +46.8% |
+
+- **Neighbours help temperature at a point with no station**, by 3.5 points
+  at 1–3 h (better at 23 of 31 stations). Most for the city-side stations:
+  SFOC1 (the house's stand-in) +22.7% vs +15.9%, F4637 +28.5% vs +17.3%,
+  D5422 +18.5% vs +5.6%. Still a quarter of what a point's own obs give.
+- **They cost gust 2 points** (better at 14 of 32). A neighbour's gust error
+  is its own sensor's shelter, not the wind at the point.
+- **With the point's own obs they add nothing** (within 0.4 points).
+- **The bridge can't borrow:** GGBC1 held out scores −45% / −41% on gust
+  with either model. Trained on sheltered stations where HRRR's gust runs
+  high, they cut the bridge's gust, where HRRR is right. With its own obs
+  (rolling folds) it is +31% / +23%.
+- Calibration is unchanged: the no-obs models' 80% intervals cover 70–74%.
 
 ## Terrain and leave-stations-out (2026-10-06, evening)
 
