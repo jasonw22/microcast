@@ -334,6 +334,38 @@ G3010, G6226) and a second PG&E station (438PG). Two ways in:
   (`source = madis`, MADIS QC flags kept; silver rejects B and X) plus
   station positions to bronze.stations. 48 hours per snapshot, resumable.
 
+**Real time without Synoptic** (checked 2026-10-09, trial day 5). What
+Synoptic serves us live, and the free route for each:
+
+| Stations | Operator | Free real-time route | Latency seen |
+| --- | --- | --- | --- |
+| C5988, F6803, E9227, F2543, F4637 (and D5422 etc.) | CWOP | MADIS public real-time files; or CWOP's own APRS-IS servers (`cwop.aprs.net:14580`, receive-only login) | 15–20 min; seconds |
+| 604PG | PG&E | MADIS real-time; NWS API (`api.weather.gov/stations/604PG/observations`) | 15–25 min |
+| GGBC1 | NWS Monterey WFO | MADIS real-time; NWS API | **~75 min** (Synoptic: ~15 min) |
+| FTPC1 | NOS | NDBC (already ingested) | ~15 min |
+
+- **MADIS real-time** (`madisPublic1/data/LDAD/mesonet/netCDF/`, no account)
+  is the same hourly national file as the archive, rewritten as data
+  arrives, and it keeps the last ~5 days (122 files). It carries every
+  station above; `madis.parse_hour` reads it unchanged. Cost: ~31 MB per
+  hour downloaded to keep a few hundred KB (~22 GB a month). The archive
+  copy follows a day or two later.
+- **GGBC1 is the one real loss.** In MADIS its provider is `MesoWest`:
+  the free copies are Synoptic's, re-shared hourly. With its own obs an
+  hour or two older (rolling folds 2026-04 → 10, gust, features shifted
+  for every station), bridge gust skill vs raw HRRR goes +37.3% → +33.2%
+  (1 h) → +31.2% (2 h) at 1–3 h, MAE 2.06 → 2.20 → 2.27 mph; 4–6 h loses
+  1–2 points. 604PG and Fort Point lose 1–4 points. Still far ahead of HRRR.
+- **Minimum real-time need** (what to tell Synoptic, or what a free pull
+  must meet): 7 stations (GGBC1, 604PG, the five Castro CWOP), temperature,
+  wind, gust, direction (solar for D2 later); one pull an hour, before each
+  HRRR cycle's issue time (init + 55 min), returning the last hour; obs no
+  older than ~30 min at pull time to count as "at init". History is not
+  needed from them: the 14-day bias window and training come from MADIS.
+- If live obs come from MADIS, the as-of rule must match: build GGBC1's
+  `obs_last` / `err_at_init` from the obs actually visible at issue time
+  (about an hour before init), in training as well as live.
+
 **PurpleAir network.** The BME280 temperature/RH/pressure of public PurpleAir
 sensors is a useful dense network for the marine-layer push (hot-biased, so
 used as changes, not levels; no wind). History exists only through the

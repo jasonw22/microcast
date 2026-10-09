@@ -49,6 +49,7 @@ stations:
   - {id: E9227, source: synoptic, lat: 37.7560, lon: -122.4360, note: "CWOP, Castro; temp, wind, gust, solar"}
   - {id: F2543, source: synoptic, lat: 37.7630, lon: -122.4460, note: "CWOP, Corona Heights slope (~150 m); temp, wind, gust, solar"}
   - {id: F4637, source: synoptic, lat: 37.7700, lon: -122.4230, note: "CWOP, Duboce Triangle; temp, wind, gust"}
+  - {id: GGBC1, source: synoptic, lat: 37.8198, lon: -122.4790, note: "Golden Gate Bridge mid-span, deck height (82 m); wind, gust, direction (mirrored vane, fixed in silver); MADIS lags ~2 days, so live obs come from here"}
 
 # Sensors: ours, then public PurpleAir sensors on the marine-layer transect.
 # Identifiers that would locate the house live in .env.

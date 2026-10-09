@@ -113,8 +113,9 @@ Evening session (2026-10-06):
 
 1. Synoptic: `microcast ingest synoptic` at least weekly (the free tier keeps
    7 days; the trial ends ~2026-10-19, then check what the account becomes).
-   GGBC1 is on Synoptic live (MADIS is ~2 days behind), so live bridge
-   forecasts need it in the Synoptic pull; not yet in the registry.
+   GGBC1 joined the Synoptic stations 2026-10-09. Doing without Synoptic:
+   D10 "Real time without Synoptic" (MADIS real-time covers everything;
+   GGBC1 arrives ~1 h late there, costing ~4 points of bridge gust skill).
 2. Neighbour obs, follow-ups (first pass done 2026-10-07, see below):
    neighbour features for temperature only (they cost gust 2 points), and a
    no-own-obs sigma that matches its 70–74% coverage. Bridge gust must keep
