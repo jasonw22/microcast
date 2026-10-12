@@ -113,6 +113,46 @@ def run_holdout(
     return board
 
 
+def run_nbm_comparison(models: list[str], *, n_boot: int = 1000, log: Callable[[str], None] = print) -> pd.DataFrame:
+    """NBM scored on the stored rolling backtest's rows -> data/reports/nbm/; returns the leaderboard.
+
+    Only the NBM runs in bronze (a sample, ``microcast backfill nbm``) are
+    compared, and every model is scored on the same rows (``common_rows``).
+    Reads gold.scores; writes nothing to the lake.
+    """
+    from pyiceberg.expressions import And, In
+
+    from microcast.backtest import nbm
+
+    catalog = get_catalog()
+    bronze = catalog.load_table("bronze.nwp_point")
+    snapshots = {"bronze_nwp": bronze.current_snapshot().snapshot_id}
+    raw = bronze.scan(row_filter=EqualTo("model", "nbm"), snapshot_id=snapshots["bronze_nwp"]).to_pandas()
+    runs = nbm.aligned(raw)
+    log(f"NBM: {runs.init_time.nunique()} runs, {len(runs)} point-leads")
+    sc = catalog.load_table("gold.scores")
+    snapshots["scores"] = sc.current_snapshot().snapshot_id
+    names = sorted({backtest.BASELINE, *models})
+    inits = [t.isoformat() for t in sorted(runs.init_time.unique())]
+    scores = sc.scan(
+        row_filter=And(EqualTo("kind", "backtest"), In("model_name", names), In("init_time", inits)),
+        snapshot_id=snapshots["scores"],
+    ).to_pandas()
+    scores = pd.concat([scores, nbm.scored(runs, scores)], ignore_index=True)
+    board = backtest.leaderboard(scores, n_boot=n_boot, groups={"original": backtest.ORIGINAL_STATIONS})
+    out = reports_dir() / "nbm"
+    out.mkdir(exist_ok=True)
+    board.to_csv(out / "leaderboard.csv", index=False)
+    meta = {
+        "snapshots": snapshots,
+        "nbm_runs": len(inits),
+        "git_sha": _git_sha(),
+        "generated_at": pd.Timestamp.now(tz="UTC").isoformat(),
+    }
+    (out / "meta.json").write_text(json.dumps(meta, indent=2))
+    return board
+
+
 def run_backtests(
     model_names: list[str], targets: list[str], *, log: Callable[[str], None] = print
 ) -> tuple[pd.DataFrame, pd.DataFrame]:

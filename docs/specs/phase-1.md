@@ -152,6 +152,48 @@ Evening session (2026-10-06):
 Docker Compose (skipped, D12), MinIO/Lakekeeper, RRFS/REFS ingest, alerts.
 Dagster moves into phase 1 as the scheduler (D12).
 
+## NBM benchmark (2026-10-12)
+
+The operational forecast a researcher would compare against: NWS's National
+Blend of Models (`core` product, 2.5 km, blend mean plus its ensemble
+spread). One run a day, rotating hour, 2025-07-01 to 2026-10-05 (462 runs,
+`microcast backfill nbm`), at the 33 backtest stations, 4 nearest cells
+inverse-distance weighted. Scored on the rolling backtest's own rows from
+gold.scores (`microcast backtest --nbm`, data/reports/nbm/). The NBM run of
+the same hour as our HRRR cycle: published 42-62 min after its hour, so it
+was in hand at our issue time (init + 55 min) on most days, slightly
+generous to NBM. `nbm` uses NBM's own spread as sigma; `nbm_cal` uses
+NBM's RMS error per lead from the other months (as raw_hrrr does; also
+generous, it sees later months).
+
+CRPS skill vs raw HRRR, same ~38-39k rows per cell:
+
+| | temp 1-3 h | temp 4-6 h | gust 1-3 h | gust 4-6 h |
+|---|---|---|---|---|
+| nbm (own spread) | +4.3% | +3.4% | -9.3% | -5.6% |
+| nbm_cal | +5.6% | +5.6% | +1.6% | +4.8% |
+| bias_rolling | +19.3% | +17.7% | +31.9% | +33.8% |
+| gbm_terrain | +47.9% | +34.9% | +54.9% | +51.7% |
+
+MAE, all stations, 1-3 h: temp NBM 1.27 C, ours 0.69 C; gust NBM 2.68 m/s,
+ours 1.19 m/s. Our CRPS is 45% lower than nbm_cal for temperature at 1-3 h
+(31% at 4-6 h) and 54% lower for gust (49%).
+
+* At these lead times NBM is barely better than raw HRRR. Even at the
+  airports, where its URMA calibration is anchored, temp 1-3 h is +16%
+  (KSFO) and +2% (KOAK) against ours at +37% and +41%. NBM's strength is
+  days ahead; for the first hours it is mostly a blend of the same
+  short-range models without the latest station obs.
+* NBM's own spread is too narrow at these stations: 80% intervals catch 54%
+  (temp) and 35% (gust) of outcomes. Hence the two variants.
+* NBM gust runs high, like HRRR: +1.5 m/s on average, +3.3 m/s at 604PG
+  (sheltered park). At the bridge it is the one place NBM gust is worse
+  than raw HRRR (-27%).
+* Caveats: NBM is calibrated for representative (airport-like) exposure, and
+  most of these stations are CWOP / PG&E mesonet sites; it is a point
+  comparison NBM was not designed for, which is also exactly our use. One run
+  a day, not every hour.
+
 ## HRRR cells kept apart (2026-10-11): tried, abandoned
 
 Hypothesis: silver blends the 4 nearest HRRR cells by distance alone, so a

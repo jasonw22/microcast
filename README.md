@@ -46,6 +46,10 @@ built yet. As of 2026-10-06:
 - Leave-stations-out backtests (`microcast backtest --holdout`): how the
   models do at a station they never trained on
   ([results](docs/specs/phase-1.md#terrain-and-leave-stations-out-2026-10-06-evening)).
+- A benchmark against NWS's National Blend of Models (NBM) on the same rows
+  (`microcast backtest --nbm`): at 1–6 h NBM is only 2–6% better than raw
+  HRRR at these stations; ours is 35–55% better
+  ([results](docs/specs/phase-1.md#nbm-benchmark-2026-10-12)).
 - A first look at crosswind gust on the Golden Gate Bridge from GGBC1, the
   station mid-span (its mirrored wind vane is corrected in silver)
   ([results](docs/specs/phase-1.md#golden-gate-bridge-crosswind-2026-10-06-evening)).
@@ -58,6 +62,7 @@ built yet. As of 2026-10-06:
 | --- | --- | --- | --- | --- |
 | HRRR via Herbie (NOAA on AWS) | Forecast fields (temperature, dewpoint, wind, gust, rain, visibility, sunlight, cloud) at our points | ~27 registry points around SF | `microcast ingest nwp` (live GRIB; the newest run, ~1 h after its start) | Works; run by hand |
 | HRRR history (University of Utah hrrrzarr archive) | The same fields for past cycles, up to 18 h ahead | Hourly cycles 2025-04 → now (~13,000; 124 missing in the archive), at the registry points and 42 network stations. Each cycle's Bay Area window is kept on disk (2.4 GB), so a new point inside it needs no download | `microcast backfill hrrr` (`--points network` for the stations) | Loaded; the archive runs ~3 h behind real time |
+| NBM via Herbie (NOAA on AWS) | National Blend of Models: temperature and gust, mean and ensemble spread, as a benchmark only | The backtest stations; one run a day (rotating hour) 2025-07 → 2026-10-05 | `microcast backfill nbm` | Loaded (462 runs) |
 | IEM ASOS | Airport observations: temperature, dewpoint, wind, gust | KSFO (SFO), KOAK (Oakland) | `microcast ingest obs` | Loaded 2025-04 → now |
 | IEM HADS | Hourly temperature | SFOC1 (the Mint, downtown SF; the house's stand-in) | `microcast ingest obs` | Loaded 2025-04 → now |
 | NDBC | Temperature, wind, gust | FTPC1 (Fort Point, Golden Gate) | `microcast ingest obs` | Loaded 2025-04 → now |
@@ -111,6 +116,8 @@ uv run microcast build silver && uv run microcast build gold        # gold: 36 t
 uv run microcast build static                             # terrain per point (fetches 3DEP once)
 uv run microcast backtest                                 # -> gold.scores, MLflow, data/reports/
 uv run microcast backtest --holdout --models gbm_residual,gbm_terrain,gbm_nwp,gbm_nwp_terrain  # leave stations out
+uv run microcast backfill nbm --end 2026-10-06            # NBM benchmark runs, one a day
+uv run microcast backtest --nbm --models bias_rolling,gbm_terrain  # NBM on the backtest's rows
 uv run microcast compare                                  # leaderboard vs raw HRRR
 uv run microcast site --out site                          # static pages for weather.henry.st
 python -m http.server -d site 8000

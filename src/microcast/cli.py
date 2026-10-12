@@ -264,6 +264,37 @@ def _network_points(registry: registry_mod.Registry) -> list[registry_mod.Virtua
     ]
 
 
+@backfill_app.command("nbm")
+def backfill_nbm(
+    start: str = typer.Option("2025-07-01", help="First run (ISO date/time, UTC)"),
+    end: str = typer.Option(..., help="Stop before this run (ISO date/time, UTC)"),
+    leads: str = typer.Option("1-6", help="'1-6' or '1,3'"),
+    stride: int = typer.Option(24, help="Keep one run in N (rotating hour); 24 is one a day"),
+    workers: int = typer.Option(4, help="Parallel run fetches (processes)"),
+) -> None:
+    """NBM runs at the backtest's stations into bronze.nwp_point, for `backtest --nbm` (a benchmark, not an input)."""
+    from microcast.ingest import nbm
+    from microcast.lake.catalog import get_catalog, init_lake
+    from microcast.transform import static
+
+    init_lake()
+    sc = get_catalog().load_table("gold.scores").scan(selected_fields=("point_id",)).to_arrow()
+    ids = set(sc.column("point_id").unique().to_pylist())
+    pos = static.points()
+    points = pos[pos.point_id.isin(ids)].reset_index(drop=True)
+    typer.echo(f"{len(points)} stations from gold.scores")
+    stats = nbm.backfill(
+        points,
+        _parse_init(start),
+        _parse_init(end),
+        _parse_leads(leads),
+        stride_h=stride,
+        workers=workers,
+        log=typer.echo,
+    )
+    typer.echo(", ".join(f"{k} {v}" for k, v in stats.items()))
+
+
 @backfill_app.command("hrrr")
 def backfill_hrrr(
     start: str = typer.Option(..., help="First cycle (ISO date/time, UTC)"),
@@ -359,10 +390,14 @@ def backtest_cmd(
     models: str = typer.Option("raw_hrrr,bias_rolling,gbm_residual,gbm_purpleair", help="Comma-separated model names"),
     targets: str = typer.Option("t2m,gust", help="Comma-separated targets"),
     holdout: bool = typer.Option(False, help="Leave stations out instead (data/reports/holdout/ only)"),
+    nbm: bool = typer.Option(False, help="Score NBM against the stored backtest instead (data/reports/nbm/ only)"),
 ) -> None:
     """Rolling monthly backtests -> gold.forecasts, gold.scores, MLflow, data/reports/."""
-    from microcast.pipeline import run_backtests, run_holdout
+    from microcast.pipeline import run_backtests, run_holdout, run_nbm_comparison
 
+    if nbm:
+        _print_board(run_nbm_comparison(models.split(","), log=typer.echo))
+        return
     if holdout:
         _print_board(run_holdout(models.split(","), targets.split(","), log=typer.echo))
         return
