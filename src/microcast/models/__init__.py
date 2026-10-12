@@ -23,10 +23,6 @@ the design's zoo:
 * ``gbm_nwp_neighbours`` / ``gbm_terrain_neighbours``: those with the nearest
   other stations' errors at init and rolling bias (``nb*`` columns,
   ``transform.neighbours``) added: without and with the point's own obs.
-* ``gbm_nwp_terrain_cells`` / ``gbm_terrain_cells``: ``gbm_nwp_terrain`` and
-  ``gbm_terrain`` with HRRR's 4 nearest cells kept apart (``cell*`` columns,
-  ``transform.cells``): each cell's value, height and land mask, not only
-  their distance-weighted blend.
 """
 
 from __future__ import annotations
@@ -222,26 +218,6 @@ class GBMTerrainNeighbours(GBMResidual):
         return [*feature_columns()[:-1], *_static_cols(df), *neighbours.columns(df)]
 
 
-class GBMNWPTerrainCells(GBMResidual):
-    name = "gbm_nwp_terrain_cells"
-    needs = ("static", "cells")
-
-    def columns(self, df: pd.DataFrame) -> list[str]:
-        from microcast.transform import cells
-
-        return [*nwp_columns(), *_static_cols(df), *cells.columns(df)]
-
-
-class GBMTerrainCells(GBMResidual):
-    name = "gbm_terrain_cells"
-    needs = ("static", "cells")
-
-    def columns(self, df: pd.DataFrame) -> list[str]:
-        from microcast.transform import cells
-
-        return [*feature_columns()[:-1], *_static_cols(df), *cells.columns(df)]
-
-
 MODELS = {
     "raw_hrrr": RawNWP,
     "bias_rolling": BiasRolling,
@@ -252,8 +228,6 @@ MODELS = {
     "gbm_nwp_terrain": GBMNWPTerrain,
     "gbm_nwp_neighbours": GBMNWPNeighbours,
     "gbm_terrain_neighbours": GBMTerrainNeighbours,
-    "gbm_nwp_terrain_cells": GBMNWPTerrainCells,
-    "gbm_terrain_cells": GBMTerrainCells,
 }
 
 

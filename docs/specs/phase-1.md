@@ -120,6 +120,8 @@ Evening session (2026-10-06):
    neighbour features for temperature only (they cost gust 2 points), and a
    no-own-obs sigma that matches its 70–74% coverage. Bridge gust must keep
    GGBC1's own obs: held out, every model is 40%+ worse than raw HRRR there.
+   Ranked research directions for places without a station: see "HRRR
+   cells kept apart" below (abandoned approaches are recorded there too).
 3. Bridge crosswind gust in gold: a `xgust` target at GGBC1 (gust ×
    |sin(direction − 354.7°)|, from the corrected vane), HRRR's crosswind
    gust and along-bridge wind as features, and a "crosswind gust > 9 m/s"
@@ -149,6 +151,61 @@ Evening session (2026-10-06):
 
 Docker Compose (skipped, D12), MinIO/Lakekeeper, RRFS/REFS ingest, alerts.
 Dagster moves into phase 1 as the scheduler (D12).
+
+## HRRR cells kept apart (2026-10-11): tried, abandoned
+
+Hypothesis: silver blends the 4 nearest HRRR cells by distance alone, so a
+coastal point gets sea and land mixed into a value that may be true nowhere,
+and the model can't tell which cell resembled it. HRRR calls the nearest cell
+water at KSFO, FTPC1, 604PG and GGBC1. Giving the model each cell (its value
+minus the blend for t2m, gust and wind, HRRR terrain height, land mask,
+distance, real ground above the cell) and a land-only blend should help, most
+of all where there is no station of its own.
+
+Test: `silver.nwp_cells` and `transform.cells`, models
+`gbm_nwp_terrain_cells` / `gbm_terrain_cells`, leave-stations-out with the
+same gold snapshot and groups as 2026-10-07. CRPS skill vs raw HRRR:
+
+| | temp 1-3 h | temp 4-6 h | gust 1-3 h | gust 4-6 h |
+|---|---|---|---|---|
+| gbm_nwp_terrain (no own obs) | +8.2% | +6.1% | +22.3% | +24.1% |
+| + cells | +9.0% | +6.3% | +22.4% | +24.3% |
+| gbm_terrain (own obs) | +41.3% | +25.6% | +51.2% | +46.4% |
+| + cells | +40.9% | +25.7% | +50.9% | +46.2% |
+
+Result: no gain. Every difference is inside the bootstrap CIs. Per station
+(1-3 h, no own obs) the change is noise both ways, median 0, most within
++-6-10%; the water-cell stations show no pattern (KSFO temp +8%, 604PG gust
+-9%, FTPC1 ~0). With own obs, median -0.3%. Most likely the terrain features
+already recover what the blend loses (`elev_minus_hrrr_m`, distance to
+water, fetch), and anything left is too weak to learn from ~30 stations.
+
+Abandoned: code and table removed. The experiment is commit be498f1
+(`git show be498f1`, or `git checkout be498f1 -- src/microcast/transform/cells.py`
+and the model/pipeline/schema hunks) if it's worth another look.
+
+Don't redo: a terrain-weighted blend (by land mask or cell height) on this
+evidence; it uses the same information the cells test gave the model.
+
+Worth revisiting only if:
+* the truth network gets much denser along the coast and hills (more
+  stations is what would let a weak cell signal be learnt), or
+* a point lies outside the terrain the stations cover (Twin Peaks summit, a
+  hilltop route). Trees can't extrapolate `elev_minus_hrrr_m`; a physical
+  lapse-rate adjustment before the model would. The holdout can't test this
+  (no station out there), so it needs a station or a careful argument first.
+
+Where the no-own-obs gap is instead: obs. Own obs take temperature 1-3 h
+from +8% to +41%; nothing done to the HRRR input has moved it more than a
+point. Directions, most promising first:
+1. Own obs at the places that matter: the backyard WS-2000 for the house
+   (Next #8); for the ride, any station along JFK and the Panhandle.
+2. Neighbour obs, temperature only, with a calibrated sigma (Next #2).
+3. Regime features: marine layer depth and inversion strength (HRRR 850 mb
+   vs surface temperature, low cloud, onshore wind), so errors are learnt
+   per regime rather than per place.
+4. PurpleAir temperature as changes along the transect (they carry the fog
+   edge, not levels).
 
 ## Neighbour obs (2026-10-07)
 

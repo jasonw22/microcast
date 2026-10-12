@@ -315,22 +315,6 @@ def build_silver(
     silver.rebuild(date.fromisoformat(start), last, log=typer.echo)
 
 
-@build_app.command("cells")
-def build_cells(
-    start: str = typer.Option("2025-04-01", help="First month (ISO date)"),
-    end: str = typer.Option(None, help="Stop before this day; default tomorrow"),
-) -> None:
-    """HRRR's 4 nearest cells per point, kept apart -> silver.nwp_cells, month by month."""
-    from datetime import date
-
-    from microcast.lake.catalog import init_lake
-    from microcast.transform import cells
-
-    init_lake()
-    last = date.fromisoformat(end) if end else date.today() + timedelta(days=1)
-    cells.rebuild(date.fromisoformat(start), last, log=typer.echo)
-
-
 @build_app.command("gold")
 def build_gold(
     stations: str = typer.Option("network", help="'registry', or 'network': registry plus every MADIS station"),
