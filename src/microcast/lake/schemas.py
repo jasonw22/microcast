@@ -129,6 +129,15 @@ NWP_ALIGNED_SCHEMA = _wide(
     ("ingested_at", _T, True),
 )
 
+# HRRR's 4 nearest cells kept apart (transform.cells): rank 1 is the nearest.
+NWP_CELLS_SCHEMA = _wide(
+    ("model", _S, True),
+    ("init_time", _T, True),
+    ("lead_min", _I, True),
+    ("point_id", _S, True),
+    *((f"cell{r}_{f}", _D, False) for r in range(1, 5) for f in ("t2m", "gust", "wind10")),
+)
+
 TARGETS = ["t2m", "gust"]
 # One row per (station point, cycle, lead). issue_time is when the forecast could
 # first be made (HRRR history: init + 55 min). Every obs-derived feature is as of
@@ -214,6 +223,9 @@ SILVER_NWP_ALIGNED = TableDef(
     NWP_ALIGNED_SCHEMA,
     _spec(NWP_ALIGNED_SCHEMA, ("model", "identity"), ("init_time", "day")),
 )
+SILVER_NWP_CELLS = TableDef(
+    "silver", "nwp_cells", NWP_CELLS_SCHEMA, _spec(NWP_CELLS_SCHEMA, ("model", "identity"), ("init_time", "day"))
+)
 GOLD_TRAINING = TableDef("gold", "training_examples", TRAINING_SCHEMA, _spec(TRAINING_SCHEMA, ("init_time", "day")))
 GOLD_FORECASTS = TableDef(
     "gold", "forecasts", FORECASTS_SCHEMA, _spec(FORECASTS_SCHEMA, ("model_name", "identity"), ("valid_time", "day"))
@@ -245,6 +257,7 @@ TABLES: list[TableDef] = [
     BRONZE_STATIONS,
     SILVER_OBS_QC,
     SILVER_NWP_ALIGNED,
+    SILVER_NWP_CELLS,
     SILVER_STATIC_FEATURES,
     GOLD_TRAINING,
     GOLD_NETWORK_FEATURES,

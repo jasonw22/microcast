@@ -75,6 +75,14 @@ def load_gold(model_names: list[str], log: Callable[[str], None] = print) -> tup
             raise ValueError(f"no static features for {missing}: run `microcast build static`")
         gold = gold.merge(feats, on="point_id", how="left")
         log(f"silver.static_features @ {snapshots['static']}: {feats.shape[1] - 1} features, {len(feats)} points")
+    if "cells" in needs:  # after static: the cell height deltas use st_elev_m
+        from microcast.transform import cells, static
+
+        tbl = catalog.load_table("silver.nwp_cells")
+        snapshots["cells"] = tbl.current_snapshot().snapshot_id
+        cell_vals = tbl.scan(row_filter=EqualTo("model", "hrrr"), snapshot_id=snapshots["cells"]).to_pandas()
+        gold = cells.features(gold, cell_vals, static.points())
+        log(f"silver.nwp_cells @ {snapshots['cells']}: {len(cells.columns(gold))} features from {cells.K} cells")
     if "neighbours" in needs:
         from microcast.transform import neighbours, static
 
