@@ -408,6 +408,12 @@ cut temperature CRPS by 1.2–1.7% (95% CI excludes zero) and do nothing for
 gust (phase-1 spec, "PurpleAir with vs without"). Kept as inputs to
 `gbm_purpleair`; no further history purchases.
 
+**Ingest removed (2026-10-16).** The gain didn't justify the API cost or the
+upkeep, so the transect backfill is gone and live polling won't be built.
+The history to 2026-10-05 stays in the lake, and `gbm_purpleair` keeps its
+results (phase-1 spec, "PurpleAir transect: ingest removed"). The own sensor
+is unaffected.
+
 **For code.** Stations added after a cycle was backfilled have no HRRR rows
 for it, and a rerun skips the cycle because its batch id is already recorded.
 Before these stations enter a backtest, backfill HRRR for just the new points

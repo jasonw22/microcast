@@ -69,12 +69,12 @@ built yet. As of 2026-10-06:
 | Synoptic | Temperature, wind, gust, solar radiation | 604PG (PG&E, Golden Gate Park) and five CWOP home stations in the Castro | `microcast ingest synoptic` | Works; free tier keeps 7 days, so it accrues from 2026-09-28 |
 | MADIS mesonet archive | History for the same Synoptic stations plus ~25 more in the SF box (CWOP, PG&E, Presidio, Marin headlands) | 2025-04 → now | `microcast backfill madis` | Loaded (18.8M rows) |
 | PurpleAir, own sensor | PM2.5 on both laser channels, sensor temperature, humidity, pressure | The outdoor PA-II at the house | `microcast ingest purpleair` (home network, free) | Works; run by hand |
-| PurpleAir, public transect | Hourly sensor temperature | 10 public sensors, Ocean Beach → Sunset → Twin Peaks → Castro, 2025-04 → now | `microcast backfill purpleair` (paid API points) | Loaded (~115k rows; ~237k API points) |
+| ~~PurpleAir, public transect~~ | ~~Hourly sensor temperature~~ | ~~10 public sensors, Ocean Beach → Sunset → Twin Peaks → Castro~~ | ~~`microcast backfill purpleair` (paid API points)~~ | **Removed 2026-10-16:** a 1–2% temperature gain wasn't worth the API cost or the upkeep. The history already loaded (2025-04 → 2026-10-05) stays in the lake, so `gbm_purpleair` and its results remain ([spec](docs/specs/phase-1.md#purpleair-transect-ingest-removed-2026-10-16)) |
 
 The backtest trains and scores at 36 stations: the four original truth
 stations (SFOC1, KSFO, KOAK, FTPC1) plus the MADIS network, which includes
-the Synoptic stations. The PurpleAir sensors are inputs to one model, never truth
-(their temperature reads hot).
+the Synoptic stations. The PurpleAir transect sensors are inputs to one model, never truth
+(their temperature reads hot), and their history stops at 2026-10-05.
 
 **Planned, not built**
 
@@ -83,7 +83,7 @@ the Synoptic stations. The PurpleAir sensors are inputs to one model, never trut
   ([D12](docs/decisions.md#d12--dagster-on-k3s-runs-the-collectors-not-cronjobs)).
   Until then, every collector is run by hand.
 - MinIO/S3 storage and the Lakekeeper REST catalog.
-- Hourly live PurpleAir polling (D10).
+- ~~Hourly live PurpleAir polling (D10).~~ Dropped with the transect ingest.
 - A backyard weather station at the house (D5).
 - Hosting the status site at weather.henry.st (D8).
 - Live inference, the forecast panel on the site, and plain-language alerts
@@ -127,8 +127,7 @@ Collectors, run by hand until Dagster schedules them (D12): `microcast ingest
 synoptic` (at least weekly; the free tier keeps only 7 days), `microcast ingest
 purpleair` (every 2 min on the home network). MADIS history: `microcast
 backfill madis --start 2025-04-01` (resumable; streams ~30 MB per hour of data
-and keeps the SF box). PurpleAir transect history: `microcast backfill
-purpleair` (spends API points, stops at `--floor`), then `--load` into bronze. To move the lake to the cluster: `microcast lake copy --to <catalog>`,
+and keeps the SF box). To move the lake to the cluster: `microcast lake copy --to <catalog>`,
 then rebuild silver and gold there (decisions D11).
 
 Each ingest batch appends new Parquet files and a new Iceberg snapshot to
@@ -147,7 +146,7 @@ src/microcast/
   ingest/nwp.py    Herbie subset → pick_points(k=4) → long Arrow (live)
   ingest/hrrr_zarr.py  HRRR history from the hrrrzarr archive (backfill)
   ingest/obs.py    station truth: IEM ASOS/HADS, NDBC
-  ingest/purpleair.py  own PurpleAir sensor (LAN or API), public transect history
+  ingest/purpleair.py  own PurpleAir sensor (LAN or API)
   ingest/synoptic.py   Synoptic/CWOP stations (last 7 days, accrues)
   ingest/madis.py  MADIS mesonet history (CWOP, PG&E stations), streamed hourly
   ingest/dem.py    USGS 3DEP elevation over the HRRR window, 10 m, cached
@@ -243,4 +242,4 @@ git-ignored. The status site shows station and place ids and scores only.
 | GGBC1 | Golden Gate Bridge, mid-span at deck height (MesoWest via MADIS); wind only, its vane reads mirrored |
 | 604PG | PG&E station at the west end of JFK Drive, Golden Gate Park |
 | C5988, F6803, E9227, F2543, F4637 | CWOP home weather stations around the Castro and Corona Heights |
-| pa_<index> | A public PurpleAir sensor on the transect, by its PurpleAir sensor number |
+| pa_<index> | A public PurpleAir sensor on the transect, by its PurpleAir sensor number (history only; no longer ingested) |

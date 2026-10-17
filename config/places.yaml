@@ -63,7 +63,8 @@ sensors:
     status: planned # wifi station for the back yard; must report solar radiation (D2) and wind
   # Public PurpleAir sensors, Ocean Beach → Sunset → Twin Peaks → Castro (D10).
   # BME280 temperature reads hot inside the housing: use as changes, not levels.
-  # History is hourly temperature only (~27k API points per sensor for 18 months).
+  # History is hourly temperature only, 2025-04 -> 2026-10-05; no longer ingested (spec,
+  # "PurpleAir transect: ingest removed"). Kept because build gold uses their positions.
   - {id: pa_92183, kind: purpleair_network, sensor_index: 92183, lat: 37.7484, lon: -122.5022, note: "Ocean Beach"}
   - {id: pa_38837, kind: purpleair_network, sensor_index: 38837, lat: 37.7622, lon: -122.4995, note: "Outer Sunset, 40th & Irving"}
   - {id: pa_262467, kind: purpleair_network, sensor_index: 262467, lat: 37.7616, lon: -122.4881, note: "Outer Sunset, 29th & Judah"}

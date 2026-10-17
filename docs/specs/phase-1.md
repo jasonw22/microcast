@@ -89,7 +89,8 @@ Done this session (details in the Results sections below):
 - **PurpleAir transect:** ten public sensors, hourly temperature 2025-04 →
   now, ~237k API points (763k left). As inputs (`gbm_purpleair`) they cut
   temperature CRPS by 1.2–1.7% and do nothing for gust. No more history
-  purchases (D10).
+  purchases (D10). **The ingest was removed 2026-10-16;** the history stays
+  (see "PurpleAir transect: ingest removed").
 - **Gold and backtest:** 36 truth stations (the original four plus the MADIS
   network). The gate is judged on the original four; it passes (temperature
   +43% / +30%, gust +30% / +27%).
@@ -141,8 +142,8 @@ Evening session (2026-10-06):
    backfill and build commands as partitioned assets with schedules and
    per-table concurrency pools, declared in `defs.yaml` where possible (D12);
    then Postgres and the `dagster/dagster` Helm chart on the swarm cluster.
-7. A leaner PurpleAir feature set (the two transect summaries only) against
-   the 32-feature version.
+7. ~~A leaner PurpleAir feature set (the two transect summaries only) against
+   the 32-feature version.~~ Moot: the transect ingest was removed 2026-10-16.
 8. Backyard station (D5); confirm the model first.
 9. First look at `lcc` and DSWRF vs the CWOP solar sensors for D2.
 10. Status site on k3s, internal at weather.henry.st (D8).
@@ -382,6 +383,47 @@ waterline.
   linear fit doesn't lower the error. Not worth a backfill.
 - One sensor can't say which sidewalk is worse, or what the towers do to
   gusts locally.
+
+## PurpleAir transect: ingest removed (2026-10-16)
+
+Decision: stop pulling the ten public transect sensors. They bought a 1.2–1.7%
+temperature CRPS gain and nothing for gust ("PurpleAir with vs without",
+below), for ~237k API points (~$24) of history. Keeping them live would cost
+~1.2–1.5k points a day for hourly polling (D10), plus a sensor list to look
+after as sensors go offline. Not worth it. The own sensor stays:
+`microcast ingest purpleair` (the LAN reading, free) and `--history-days`
+(its API history) are unchanged.
+
+What went:
+
+- `microcast backfill purpleair` (the paid `/history` pull with a points
+  floor, and `--load` from the response cache into bronze).
+- `backfill_network`, `load_cached`, `windows`, `cache_path` and
+  `remaining_points` in `ingest/purpleair.py`, and their tests.
+- Hourly live transect polling, which was planned (D10) but never built.
+
+What stays, frozen at 2026-10-05:
+
+- The transect's rows in `bronze.obs` (`source = purpleair`, `pa_<index>`)
+  and its positions in `bronze.stations`; bronze is append-only.
+- The ten `purpleair_network` sensors in `config/places.yaml`, which
+  `build gold` still needs for the west/east split.
+- `gold.network_features` (`transform/network.py`), rebuilt by `build gold`
+  from that history, and `gbm_purpleair` with its backtest results.
+
+So `gbm_purpleair` can't run live: for cycles after 2026-10-05 its `pa_*`
+features are missing. A backtest that covers those months gets missing
+values there (LightGBM accepts them), so any skill the transect shows will
+shrink as new months come in. The 2026-10-06 numbers below are the ones to
+quote.
+
+To restore the ingest: the code is at commit e28a5e2 (`git show
+e28a5e2:src/microcast/cli.py`, the `backfill_purpleair` command, and `git
+show e28a5e2:src/microcast/ingest/purpleair.py`). The response cache under
+`data/purpleair/history/` is still on disk, so `--load` needs no API calls.
+Revisit only if the transect gets cheaper, for example free sensors of our
+own along it, or if a leaner feature set (the two summaries only) does
+noticeably better.
 
 ## PurpleAir with vs without (2026-10-06)
 
