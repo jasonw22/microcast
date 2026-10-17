@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import click
 import pandas as pd
 import pytest
 from typer.testing import CliRunner
@@ -146,12 +147,12 @@ def test_cli_rejects_blank_explicit_holdout_stations(monkeypatch, selection):
     monkeypatch.setattr("microcast.pipeline.run_holdout", run)
     result = runner.invoke(app, ["backtest", "--holdout", "--holdout-stations", selection])
     assert result.exit_code != 0
-    assert "non-empty" in result.stderr
+    assert "non-empty" in click.unstyle(result.stderr)  # CI forces Rich colour
     assert not called
 
     result = runner.invoke(app, ["backtest", "--holdout-stations", " "])
     assert result.exit_code != 0
-    assert "requires --holdout" in result.stderr
+    assert "requires --holdout" in click.unstyle(result.stderr)
     assert not called
 
 
