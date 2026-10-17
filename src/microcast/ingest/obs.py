@@ -211,7 +211,7 @@ def backfill(
     from microcast.lake.catalog import append_bronze, recorded_batches
 
     done = recorded_batches("bronze.obs")
-    recent = date.today() - timedelta(days=refetch_recent_days)
+    recent = datetime.now(UTC).date() - timedelta(days=refetch_recent_days)
     stats = {"appended": 0, "skipped": 0, "empty": 0, "rows": 0}
     for st in stations:
         for first, last in months(start, end):

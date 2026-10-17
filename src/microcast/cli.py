@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 import typer
@@ -37,6 +37,12 @@ def _parse_init(value: str) -> datetime:
         return t.replace(minute=0, second=0, microsecond=0)
     t = datetime.fromisoformat(value)
     return t.replace(tzinfo=UTC) if t.tzinfo is None else t.astimezone(UTC)
+
+
+def _end_day(end: str | None) -> date:
+    """--end as a date, default tomorrow in UTC: the lake's days are UTC days, so a local
+    'today' cuts off everything after 00Z each evening in the Americas."""
+    return date.fromisoformat(end) if end else datetime.now(UTC).date() + timedelta(days=1)
 
 
 @app.command()
@@ -106,12 +112,10 @@ def ingest_nwp(
 @ingest_app.command("obs")
 def ingest_obs(
     start: str = typer.Option("2025-04-01", help="First day (ISO date)"),
-    end: str = typer.Option(None, help="Stop before this day (ISO date); default tomorrow"),
+    end: str = typer.Option(None, help="Stop before this day (ISO date); default tomorrow, UTC"),
     station: Annotated[list[str] | None, typer.Option(help="Station id(s) from the registry; default all")] = None,
 ) -> None:
     """Station observations (IEM ASOS/HADS, NDBC) into bronze.obs, a month per batch."""
-    from datetime import date
-
     from microcast.ingest.obs import backfill
     from microcast.lake.catalog import init_lake
 
@@ -120,7 +124,7 @@ def ingest_obs(
     stations = [
         s for s in registry_mod.load().stations if s.source in archive_sources and (not station or s.id in station)
     ]
-    last = date.fromisoformat(end) if end else date.today() + timedelta(days=1)
+    last = _end_day(end)
     stats = backfill(stations, date.fromisoformat(start), last, log=typer.echo)
     typer.echo(", ".join(f"{k} {v}" for k, v in stats.items()))
 
@@ -333,16 +337,14 @@ def backfill_hrrr(
 @build_app.command("silver")
 def build_silver(
     start: str = typer.Option("2025-04-01", help="First month (ISO date)"),
-    end: str = typer.Option(None, help="Stop before this day; default tomorrow"),
+    end: str = typer.Option(None, help="Stop before this day; default tomorrow, UTC"),
 ) -> None:
     """Rebuild silver.nwp_aligned and silver.obs_qc month by month."""
-    from datetime import date
-
     from microcast.lake.catalog import init_lake
     from microcast.transform import silver
 
     init_lake()
-    last = date.fromisoformat(end) if end else date.today() + timedelta(days=1)
+    last = _end_day(end)
     silver.rebuild(date.fromisoformat(start), last, log=typer.echo)
 
 
