@@ -144,8 +144,7 @@ def test_existing_reports_populate_leaderboard(monkeypatch, tmp_path, catalog):
         "leaderboard.csv": "model,point,variable,lead\nraw_hrrr,all,t2m,1-3 h\n",
         "monthly_skill.csv": "model,variable,month,skill\nraw_hrrr,t2m,2025-01,0\n",
         "backtest_meta.json": (
-            '{"generated_at":"2025-01-01T00:00:00Z","git_sha":"abc",'
-            '"gold_snapshot_id":2980748795174509963}'
+            '{"generated_at":"2025-01-01T00:00:00Z","git_sha":"abc","gold_snapshot_id":2980748795174509963}'
         ),
     }
     data = json.loads((_site(monkeypatch, tmp_path, catalog, reports) / "data.json").read_text())

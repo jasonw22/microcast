@@ -57,9 +57,6 @@ class Box:
     lon_max: float = -122.33
 
 
-SF_BAY_BOX = Box()  # compatibility alias
-
-
 def configured_box() -> Box:
     from microcast import settings
 

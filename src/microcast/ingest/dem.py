@@ -25,7 +25,7 @@ from microcast import settings
 
 EXPORT_URL = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage"
 CELL_M = 10.0
-# UTM 10N box: the HRRR window (ingest.hrrr_zarr.WINDOW_BOUNDS) plus ~3 km, so the
+# UTM 10N box: the default HRRR window (settings.hrrr_bounds()) plus ~3 km, so the
 # upwind scans from points near its edges still see terrain.
 BOX = (524_000.0, 578_000.0, 4_153_000.0, 4_203_000.0)  # x0, x1, y0, y1
 TILE_M = 10_000.0

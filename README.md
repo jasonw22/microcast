@@ -182,8 +182,7 @@ hours for the new configuration.
 terrain, and sampling a cached DEM rejects out-of-bounds points instead of
 silently returning its edge values. For another region, use the existing
 models that do not require static features, such as `raw_hrrr` and `gbm_nwp`.
-The PurpleAir transect collector is also still configured for the original
-network; an empty sensor registry now produces an empty network-feature table.
+An empty PurpleAir sensor registry produces an empty network-feature table.
 Dashboard times remain Pacific time.
 
 ## Layout

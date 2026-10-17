@@ -16,7 +16,7 @@ Layout, per cycle ``YYYYMMDD_HHz``:
 * ``sfc/<day>/<cycle>_fcst.zarr/<level>/<VAR>/<level>/<VAR>/0.<cy>.<cx>``: leads
   1-18 (1-48 at 00/06/12/18Z), time first.
 
-Each cycle is cut to a fixed Bay Area window (``WINDOW_BOUNDS``: every field,
+Each cycle is cut to a fixed window (``settings.hrrr_bounds()``, the Bay Area by default: every field,
 leads 0-18) and kept under ``data/hrrr/window/``. Points anywhere inside it are
 then read from disk, so adding stations later costs no downloads. A cycle's
 chunks are ~20 MB on the wire; its window is a few hundred KB.
@@ -46,8 +46,6 @@ BASE_URL = "https://hrrrzarr.s3.amazonaws.com"
 CHUNK = 150
 K_NEIGHBOURS = 4
 FILL = -9999.0
-# Kept window (lat_min, lat_max, lon_min, lon_max): the MADIS network box plus SFO, Oakland and Marin.
-WINDOW_BOUNDS = (37.55, 37.95, -122.70, -122.15)  # compatibility alias; runtime uses settings.hrrr_bounds()
 WINDOW_MARGIN = 3  # cells beyond the bounds, so every point's 4 nearest cells are inside
 CACHE_LEADS = 18  # every cycle has f01-f18; the 48-hour cycles' later leads aren't kept
 
@@ -159,7 +157,7 @@ def _cycle_url(init: datetime, kind: str) -> str:
 
 
 def window() -> tuple[int, int, int, int]:
-    """Grid rows [r0, r1) and columns [c0, c1) covering ``WINDOW_BOUNDS`` plus the margin."""
+    """Grid rows [r0, r1) and columns [c0, c1) covering ``settings.hrrr_bounds()`` plus the margin."""
     xs, ys = grid_axes()
     dx = float(xs[1] - xs[0])
     lat0, lat1, lon0, lon1 = settings.hrrr_bounds()

@@ -53,6 +53,7 @@ def _bounds(name: str, default: tuple[float, float, float, float]) -> tuple[floa
 
 
 def hrrr_bounds() -> tuple[float, float, float, float]:
+    """Kept HRRR window: the MADIS network box plus SFO, Oakland and Marin by default."""
     return _bounds("MICROCAST_HRRR_BOUNDS", (37.55, 37.95, -122.70, -122.15))
 
 
